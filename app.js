@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors'
 import morgan from 'morgan';
 import userRoutes from './routes/user.routes';
+import errorMiddleware from './middlewares/error.Middleware';
 
 
 const app = express();
@@ -24,5 +25,7 @@ app.use('/ping', (req, res) => {
 app.all('*', (req, res) => {
     res.status(404).send('OOPS!! 404 page not found')
 })
+
+app.use(errorMiddleware)
 
 export default app
