@@ -1,5 +1,4 @@
 import AppError from "../utils/error.util";
-import connectionDB from '../config/dbconnection.js'
 import User from "../models/user.models.js";
 
 const cookieOptions = {
@@ -14,11 +13,12 @@ const register = async(req, res, next) => {
     // check  user already exist or not
     // if user exist give message already exist otherwise if not create new user 
     try {
+        console.log("request body:",req);
         const {fullname, email, password} = req.body;
         if(!fullname|| !email || !password){
             return next(new AppError("all fields are required"))
         }
-        
+        // if user exist return from register page
         const existingUser = await User.findOne({email})
         if(existingUser){
             return next(new AppError("user already exist"))
@@ -39,9 +39,31 @@ const register = async(req, res, next) => {
             return next(new AppError("user registeration failed, please try again", 400))
         }
         // TODO: file upload
+
+        if(req.file){
+            try {
+                const result = cloudinary.v2.uploader.upload(req.file.path, {
+                    folder: 'lmsProject',
+                    width: 250,
+                    height: 250,
+                    gravity: 'faces',
+                    crop: 'fill'
+                })
+                console.log("image result:", result);
+                if(result){
+                    user.avatar.public_Id = result.public_Id,
+                    user.avatar.secure_url = result.secure_url
+                }
+            } catch (error) {
+                console.log("failed to upload avatar:", error);
+                
+            }
+        }
+
         await user.save();
         user.password = undefined
         const token = await user.generateJWTToken()
+        console.log("token", token);
     
         // set cookie
         res.cookie('token', token,cookieOptions)
@@ -105,7 +127,6 @@ const getProfile = async(req, res) => {
     } catch (error) {
         return next(new AppError("failed to fetch profile", 500))
     }
-    
 }
 
 export {
