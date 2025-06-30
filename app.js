@@ -7,12 +7,14 @@ import userRoutes from './routes/user.routes';
 import errorMiddleware from './middlewares/error.Middleware';
 
 
+
+const app = express();
+app.use(express.json())
+app.use(express.urlencoded({extended: true}))
 app.use(cors({
     origin: [process.env.FRONTEND_URL],
     Credential: true
 }))
-const app = express();
-app.use(express.json())
 
 app.use('/api/v1/users', userRoutes)
 app.use(cookieParser());
