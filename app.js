@@ -4,8 +4,8 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors'
 import morgan from 'morgan';
 import userRoutes from './routes/user.routes';
+import courseRoutes from './routes/course.routes';
 import errorMiddleware from './middlewares/error.Middleware';
-
 
 
 const app = express();
@@ -16,7 +16,8 @@ app.use(cors({
     Credential: true
 }))
 
-app.use('/api/v1/users', userRoutes)
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/courses', courseRoutes)
 app.use(cookieParser());
 app.use(morgan('dev'))
 app.use('/ping', (req, res) => {
