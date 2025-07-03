@@ -3,9 +3,10 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors'
 import morgan from 'morgan';
-import userRoutes from './routes/user.routes';
-import courseRoutes from './routes/course.routes';
-import errorMiddleware from './middlewares/error.Middleware';
+import userRoutes from './routes/user.routes.js';
+import courseRoutes from './routes/course.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+import errorMiddleware from './middlewares/error.Middleware.js';
 
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(cors({
 
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/courses', courseRoutes)
+app.use('/api/v1/payments', paymentRoutes)
 app.use(cookieParser());
 app.use(morgan('dev'))
 app.use('/ping', (req, res) => {

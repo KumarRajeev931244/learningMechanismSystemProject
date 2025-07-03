@@ -1,6 +1,6 @@
 import {Router} from 'express';
 import { createCourse, getAllCourses, getLecturesByCourseId, removeCourse, updateCourse } from '../controllers/course.controllers.js';
-import { isLoggedIn,authorisedRoles } from "../middlewares/auth.middleware.js";
+import { isLoggedIn,authorisedRoles, authorisedSubcriber } from "../middlewares/auth.middleware.js";
 import upload from '../middlewares/multer.middleware.js';
 
 const router = Router();
@@ -15,7 +15,7 @@ router.route('/')
     ;
 
 router.route('/id:')
-    .get(isLoggedIn,getLecturesByCourseId)
+    .get(isLoggedIn,authorisedSubcriber,getLecturesByCourseId)
     .put(
         isLoggedIn,
         authorisedRoles('ADMIN'),
@@ -35,4 +35,6 @@ router.route('/id:')
     
     ;
 
+
+// TODO:1 to make middleware that only payment user can see list of lecture
 export default router;
