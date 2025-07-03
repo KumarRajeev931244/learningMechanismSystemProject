@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 mongoose.set('strictQuery', false)
 
+
 const connectionDB = async() => {
     try {
         const {connection} = await mongoose.connect(process.env.MONGODB_URI)
@@ -14,4 +15,4 @@ const connectionDB = async() => {
     }
 }
 
-export default connectionDB()
+export default connectionDB

@@ -17,18 +17,21 @@ app.use(cors({
     credentials: true
 }))
 
+app.use(cookieParser());
+app.use(morgan('dev'))
+// here we are using the routes
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/courses', courseRoutes)
 app.use('/api/v1/payments', paymentRoutes)
-app.use(cookieParser());
-app.use(morgan('dev'))
+
 app.use('/ping', (req, res) => {
     res.send('/pong');
 })
 
-app.all('*', (req, res) => {
-    res.status(404).send('OOPS!! 404 page not found')
-})
+// this is the default route for the server
+// app.use('*', (req, res) => {
+//     res.status(404).json({ message: 'OOPS!! 404 page not found' });
+// })
 
 app.use(errorMiddleware)
 

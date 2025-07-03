@@ -44,18 +44,19 @@ const userSchema = new mongoose.Schema({
     }
 },{timestamps:true})
 
-userSchema.pre('save', async(next) => {
+userSchema.pre('save', async function(next){
     // if password is not modified
-    if(!this.isModified(password)){
+    if(!this.isModified('password')){
         return next()
     }
     // if password is modified
     this.password = await bcrypt.hash(this.password,10)
+    next()
 })
 
 userSchema.methods = {
-    generateJWTToken: async function(){
-        return await jwt.sign(
+    generateJWTToken:  function(){
+        return  jwt.sign(
             {id: this._id, email: this.email, subscription: this.subscription, role: this.role},
             process.env.JWT_SECRET,
             {
