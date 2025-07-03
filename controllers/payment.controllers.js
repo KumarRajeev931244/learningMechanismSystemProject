@@ -1,6 +1,6 @@
 import User from '../models/user.models.js';
 import AppError from '../utils/error.util.js';
-import razorpay from '../server.js'
+import {razorpay} from '../server.js'
 import Payment from '../models/payment.model.js';
 
 

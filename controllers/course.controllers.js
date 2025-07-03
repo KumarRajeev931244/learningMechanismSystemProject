@@ -184,7 +184,5 @@ export {
     updateCourse,
     createCourse,
     removeCourse,
-    lectureData,
     addLectureToCourseById
-
 }

@@ -67,12 +67,14 @@ userSchema.methods = {
         return await bcrypt.compare(plainTextPassword, this.password)
     },
     generatePasswordResetToken: async function(){
+        // generate reset token 
         const resetToken = crypto.randomBytes(20).toString('hex')
         this.forgotPasswordToken = crypto
                                     .createHash('sha256')
                                     .update(resetToken)
                                     .digest('hex')
-        this.forgotPasswordExpiry = Date.now() + 15*60*1000 
+        // set  expiry time for 15 minutes
+        this.forgotPasswordExpiry = Date.now() + 15*60*1000
         return resetToken;
 
     }

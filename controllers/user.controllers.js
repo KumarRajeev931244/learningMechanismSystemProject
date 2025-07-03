@@ -1,8 +1,8 @@
-import AppError from "../utils/error.util";
+import AppError from "../utils/error.util.js";
 import User from "../models/user.models.js";
 import fs from 'fs/promises'
 import cloudinary from 'cloudinary';
-import { use } from "react";
+
 const cookieOptions = {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
@@ -108,9 +108,7 @@ const login = async(req, res) => {
         )
     } catch (error) {
         return next(new AppError("error occur while login", 500))
-        
-    }
-    
+    }  
 }
 
 const logout = (req, res) => {
@@ -160,12 +158,13 @@ const forgotPassword = async(req, res, next) => {
     } catch (error) {
         user.forgotPasswordExpiry = undefined;
         user.forPasswordToken = undefined
+        console.error("error occur while sending email:", error);
         return next(new AppError(error.message, 400))
     }
 
     }
 
-    const resetPassword = async(req, res) => {
+const resetPassword = async(req, res) => {
         const {resetToken} = req.params;
         const {password} = req.body;
         const forgotPasswordToken = crypto
@@ -190,7 +189,7 @@ const forgotPassword = async(req, res, next) => {
         })
 
     }
-    const changePassword = async(req, res) => {
+const changePassword = async(req, res) => {
         const {oldPassword, newPassword} = req.body;
         const {id} = req.user;
         if(!oldPassword || !newPassword){
@@ -213,7 +212,7 @@ const forgotPassword = async(req, res, next) => {
         })
 
     }
-    const updateUser = async(req, res) => {
+const updateUser = async(req, res) => {
         const {fullname} = req.body
         const {id} = req.user.id;
         const user = await User.findById(id)
@@ -267,5 +266,6 @@ export {
     getProfile,
     forgotPassword,
     resetPassword,
-    updateUser
+    updateUser,
+    changePassword
 }
