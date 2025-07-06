@@ -2,6 +2,8 @@ import AppError from "../utils/error.util.js";
 import User from "../models/user.models.js";
 import fs from 'fs/promises'
 import cloudinary from 'cloudinary';
+import { sendEmail } from "../utils/sendEmail.js";
+import crypto from 'crypto';
 
 const cookieOptions = {
     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -15,7 +17,6 @@ const register = async(req, res, next) => {
     // check  user already exist or not
     // if user exist give message already exist otherwise if not create new user 
     try {
-        console.log("request body:",req);
         const {fullname, email, password} = req.body;
         if(!fullname|| !email || !password){
             return next(new AppError("all fields are required"))
@@ -31,7 +32,7 @@ const register = async(req, res, next) => {
             email, 
             password,
             avatar:{
-                public_Id: email,
+                public_Id: "default_avatar",
                 //TODO: paste url
                 secure_url: ""
             }
@@ -42,20 +43,19 @@ const register = async(req, res, next) => {
         }
         // TODO: file upload
 
-        console.log('file details:', JSON.stringify(req.file));
+        // console.log('file details:', JSON.stringify(req.file));
         if(req.file){
             try {
-                console.log("req file:". req.file);
-                const result = cloudinary.v2.uploader.upload(req.file.path, {
+                const result = await cloudinary.v2.uploader.upload(req.file.path, {
                     folder: 'lmsProject',
                     width: 250,
                     height: 250,
                     gravity: 'faces',
                     crop: 'fill'
                 })
-                console.log("image result:", result);
+                // console.log("image result:", result);
                 if(result){
-                    user.avatar.public_Id = result.public_Id,
+                    user.avatar.public_Id = result.public_id,
                     user.avatar.secure_url = result.secure_url
 
                     // remove file from local
@@ -69,11 +69,16 @@ const register = async(req, res, next) => {
                 
             }
         }
-
+        if(!user.avatar.secure_url){
+            return next(
+                    new AppError(error || 'please upload avatar image', 400)
+                )
+        }
+        
         await user.save();
         user.password = undefined
         const token = await user.generateJWTToken()
-        console.log("token", token);
+        // console.log("token", token);
     
         // set cookie
         res.cookie('token', token,cookieOptions)
@@ -112,15 +117,20 @@ const login = async(req, res) => {
 }
 
 const logout = (req, res) => {
-    res.cookie('token', null, {
-        secure: true, 
-        maxAge: 0,
-        httpOnly: true
-    })
-    res.status(200).json({
-        success: true,
-        message: "user logged out successfully"
-    })
+    try {
+        res.cookie('token', null, {
+            secure: true, 
+            maxAge: 0,
+            httpOnly: true
+        })
+        res.status(200).json({
+            success: true,
+            message: "user logged out successfully"
+        })
+    } catch (error) {
+        console.error("error occur while logging out:", error);
+        return next(new AppError("error occur while logging out", 500))
+    }
 }
 
 const getProfile = async(req, res) => {
@@ -138,7 +148,7 @@ const getProfile = async(req, res) => {
 }
 
 const forgotPassword = async(req, res, next) => {
-    const email = req.body;
+    const {email} = req.body;
     if(!email){
         return next(new AppError("email is required", 400))
     }
@@ -147,47 +157,58 @@ const forgotPassword = async(req, res, next) => {
         return next(new AppError("email not registered", 400))
     }
     const resetToken = await user.generatePasswordResetToken();
+    console.log('resetToken:', resetToken);
     await user.save();
     const resetPasswordUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`
     try {
-        await sendEmail(email, subject, message);
+        await sendEmail({
+            email,
+            subject: 'reset password', message:`click here to reset your password:${resetPasswordUrl}`});
         res.status(200).json({
             success: true, 
             message: `reset password token has been sent to ${email} successfully`
         })
     } catch (error) {
         user.forgotPasswordExpiry = undefined;
-        user.forPasswordToken = undefined
+        user.forgotPasswordToken = undefined
         console.error("error occur while sending email:", error);
         return next(new AppError(error.message, 400))
     }
 
     }
 
-const resetPassword = async(req, res) => {
-        const {resetToken} = req.params;
-        const {password} = req.body;
-        const forgotPasswordToken = crypto
-        .createHash('sha256')
-        .update(resetToken)
-        .digest('hex')
-
-        const user = await User.findOne({
-            forgotPasswordToken,
-            forgotPasswordExpiry: {$gt: Date.now()}
-        })
-        if(!user){
-           return next(new AppError("token is invalid or expired, please try again", 400))
+const resetPassword = async(req, res,next) => {
+        try {
+            const {resetToken} = req.params;  //extract reset token from params
+            if(!resetToken){
+                return next(new AppError("reset token is required", 400))
+            }
+            const {password} = req.body;
+            const forgotPasswordToken = crypto
+                .createHash('sha256')
+                .update(resetToken)
+                .digest('hex')
+    
+            const user = await User.findOne({
+                forgotPasswordToken,
+                forgotPasswordExpiry: {$gt: Date.now()}
+            })
+            if(!user){
+               return next(new AppError("token is invalid or expired, please try again", 400))
+            }
+            user.password = password;
+            user.forgotPasswordToken = undefined;
+            user.forgotPasswordExpiry = undefined;
+            await user.save()
+            res.status(200).json({
+                success: true,
+                message: "password changed successfully"
+            })
+    
+        } catch (error) {
+            console.error("error occur while resetting password:", error);
+            return next(new AppError("error occur while resetting password", 500))
         }
-        user.password = password;
-        user.forPasswordToken = undefined;
-        user.forgotPasswordExpiry = undefined;
-        user.save()
-        res.status(200).json({
-            success: true,
-            message: "password changed successfully"
-        })
-
     }
 const changePassword = async(req, res) => {
         const {oldPassword, newPassword} = req.body;

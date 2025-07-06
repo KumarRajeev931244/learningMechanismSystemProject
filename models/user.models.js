@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
             type: String
         },
         secure_url:{
-            type:String
+            type: String
         }
     },
     role:{

@@ -5,8 +5,14 @@ const isLoggedIn = async(req, res, next) => {
     if(!token){
         return next(new AppError("unauthenticated, please login again,400"))
     }
-    const userDetails = await jwt.verify(token, process.env.JWT_SECRET)
-    next()
+    
+    jwt.verify(token, process.env.JWT_SECRET, (error, userDetails) => {
+        if (error) {
+            return next(new AppError("unauthenticated, please login again", 400))
+        }
+        req.user = userDetails;
+        next()
+    })
 }
 
 const authorisedRoles = (...roles) => async(req, res, next) =>{
