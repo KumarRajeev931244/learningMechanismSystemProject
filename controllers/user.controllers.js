@@ -17,7 +17,7 @@ const register = async(req, res, next) => {
     // check  user already exist or not
     // if user exist give message already exist otherwise if not create new user 
     try {
-        const {fullname, email, password} = req.body;
+        const {fullname, email, password, role} = req.body;
         if(!fullname|| !email || !password){
             return next(new AppError("all fields are required"))
         }
@@ -31,6 +31,7 @@ const register = async(req, res, next) => {
             fullname,
             email, 
             password,
+            role,
             avatar:{
                 public_Id: "default_avatar",
                 //TODO: paste url
@@ -177,13 +178,17 @@ const forgotPassword = async(req, res, next) => {
 
     }
 
-const resetPassword = async(req, res,next) => {
+const resetPassword = async(req, res, next) => {
         try {
+            console.log("request:",req.body);
             const {resetToken} = req.params;  //extract reset token from params
             if(!resetToken){
                 return next(new AppError("reset token is required", 400))
             }
-            const {password} = req.body;
+            const {password} = req.body; //extract password from body
+            if(!password){
+                return next(new AppError("password is required", 400))
+            }
             const forgotPasswordToken = crypto
                 .createHash('sha256')
                 .update(resetToken)
@@ -210,44 +215,56 @@ const resetPassword = async(req, res,next) => {
             return next(new AppError("error occur while resetting password", 500))
         }
     }
-const changePassword = async(req, res) => {
-        const {oldPassword, newPassword} = req.body;
-        const {id} = req.user;
-        if(!oldPassword || !newPassword){
-            return next(new AppError("all field are mandatory", 400))
+const changePassword = async(req, res, next) => {
+        try {
+            const {oldPassword, newPassword} = req.body;
+            console.log('req user:',req.user);
+            const {id} = req.user;
+            if(!oldPassword || !newPassword){
+                return next(new AppError("all field are mandatory", 400))
+            }
+            const user = await User.findById(id).select('+password')
+            if(!user){
+                return next(new AppError("user does not exist", 400))
+            }
+            const isPasswordValid = await user.comparePassword(oldPassword);
+            if(!isPasswordValid){
+                return next(new AppError("invalid old password", 400))
+            }
+            user.password = newPassword;
+            await user.save()
+            user.password = undefined
+            res.status(200).json({
+                success: true,
+                message: "password changed successfully"
+            })
+        } catch (error) {
+            console.error("error occur while changing password:", error);
+            return next(new AppError("error occur while changing password", 500))
+            
         }
-        const user = await User.findById(id).select('+password')
-        if(!user){
-            return next(new AppError("user does not exist", 400))
-        }
-        const isPasswordValid = await user.comparePassword(oldPassword);
-        if(!isPasswordValid){
-            return next(new AppError("invalid old password", 400))
-        }
-        user.password = newPassword;
-        await user.save()
-        user.password = undefined
-        res.status(200).json({
-            success: true,
-            message: "password changed successfully"
-        })
 
     }
-const updateUser = async(req, res) => {
+const updateUser = async(req, res, next) => {
+        console.log("request body:", req.body);
         const {fullname} = req.body
-        const {id} = req.user.id;
+        const {id} = req.user;
+        console.log("request id:", id);
         const user = await User.findById(id)
+        console.log("user:", user);
         if(!user){
             return next(new AppError("user does not exist", 400))
         }
         if(req.fullname){
             user.fullname = fullname;
         }
+        console.log("request file:", req.file);
         if(req.file){
-            await cloudinary.v2.uploader.destroy(user.avatar.public_Id);
+            const destroy = await cloudinary.v2.uploader.destroy(user.avatar.secure_url);
+            console.log("destroy result:", destroy);
             try {
-                console.log("req file:". req.file);
-                const result = cloudinary.v2.uploader.upload(req.file.path, {
+                // console.log("req file:". req.file);
+                const result = await cloudinary.v2.uploader.upload(req.file.path, {
                     folder: 'lmsProject',
                     width: 250,
                     height: 250,
@@ -266,20 +283,15 @@ const updateUser = async(req, res) => {
                 console.log("failed to upload avatar:", error);
                 return next(
                     new AppError(error || 'file is not uploaded,please try again')
-                )
-                
+                )        
             }
-        
         }
         await user.save();
         res.status(200).json({
             success: true,
             message: "user details updated  successfully"
         })
-
     }
-
-
 export {
     register,
     login,

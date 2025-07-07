@@ -5,32 +5,36 @@ import upload from '../middlewares/multer.middleware.js';
 
 const router = Router();
 router.route('/')
-    .get(getAllCourses)
+    .get(getAllCourses) // to get all courses, anyone can see this route
     .post(
         isLoggedIn,
         authorisedRoles('ADMIN'),
         upload.single('thumbnail'),
-        createCourse
+        createCourse    // to create course, only admin can create course
     )
     ;
 
 router.route('/:id')
-    .get(isLoggedIn,authorisedSubcriber,getLecturesByCourseId)
+    .get(
+        isLoggedIn,
+        authorisedSubcriber,
+        getLecturesByCourseId       //to get lectures by course id, only payment user can see this route
+    )
     .put(
         isLoggedIn,
         authorisedRoles('ADMIN'),
-        updateCourse
+        updateCourse            // to update course by id, only admin can update course
     )
     .delete(
         isLoggedIn,
         authorisedRoles('ADMIN'),
-        removeCourse
+        removeCourse            // to delete course by id, only admin can delete course
     )
     .post(
         isLoggedIn,
         authorisedRoles('ADMIN'),
-        upload.single('lecture'),
-        addLectureToCourseById
+        upload.single('thumbnail'),
+        addLectureToCourseById      // to add lecture to course by id, only admin can add lecture
     )
     
     ;
