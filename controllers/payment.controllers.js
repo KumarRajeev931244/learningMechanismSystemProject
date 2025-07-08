@@ -3,7 +3,6 @@ import AppError from '../utils/error.util.js';
 import {razorpay} from '../server.js'
 import Payment from '../models/payment.model.js';
 
-
 const getRazorpayApiKey = async(req, res, next) => {
     res.status(200).json({
         success: true,
@@ -13,33 +12,53 @@ const getRazorpayApiKey = async(req, res, next) => {
 }
 
 const buySubscription = async(req, res, next) => {
-    try {
-        const {id} = req.user;
-        const user = await User.findById(id)
-        if(!user){
-            return next(new AppError('unauthorised user, please login '))
+      try {
+        const { id } = req.user;
+        const user = await Payment.findById(id);
+        if (!user) {
+          return next(new AppError("unauthorised user, please login"));
         }
-        if(user.role === 'ADMIN'){
-            return next(new AppError('admin cannot purchased course ',400))
+        console.log("user>",user);
+        if (user.role === "ADMIN") {
+          return next(new AppError("admin cannot purchased course", 400));
         }
-        const subscription = await razorpay.subscriptions.create({
+        if (user.subscription && user.subscription.status === "active") {
+          return next(
+            new AppError("you already have an active subscription", 400)
+          );
+        }
+        const options = {
             plan_id: process.env.RAZORPAY_PLAN_ID,
-            customer_notify : 1
-        })
+            customer_notify: 1,
+            total_count: 12, // 12 months subscription
+        }
+    
+        const subscription = await razorpay.subscriptions.create(options);
+        if (!subscription) {
+            return next(new AppError("failed to create subscription", 500));
+        }
+        console.log("subscription =>", subscription);
         user.subscription.id = subscription.id;
         user.subscription.status = subscription.status;
-        await user.save()
-        res.status(200).json({
-            success: true,
-            message: "subscribe successfully",
-            subscription_id: subscription.id
-        })
-    } catch (error) {
-        console.error("failed to buy subscription>",error)
-        return next(new AppError('failed to buy subscription',500))
-
-    }
-}
+        await user.save();
+        return res.status(200).json({
+          success: true,
+          message: "subscribe successfully",
+          subscription_id: subscription.id,
+        });
+      
+      } catch (error) {
+        console.error("failed to buy subscription>", error);
+        if (error.code === 'BAD_REQUEST') {
+            return next(new AppError('bad request, please try again', 400));
+        }
+        if (error.code === 'INTERNAL_SERVER_ERROR') {
+            return next(new AppError('internal server error, please try again later', 500));
+        }
+        return next(new AppError('failed to buy subscription', 500));
+        
+      }
+  }
 
 const verifySubscription = async(req, res, next) => {
     try {
@@ -90,6 +109,11 @@ const cancelSubscription = async(req, res, next) => {
         const subscription = await razorpay.subscriptions.cancel(subscriptionId)
         user.subscription.status = subscription.status;
         await user.save()
+        res.status(200).json({
+                success: true,
+                message: "cancel subscription successfully",
+        })
+
     } catch (error) {
         console.error("failed to cancel subscription>", error)
         return next(new AppError('failed to cancel  subscription',500))

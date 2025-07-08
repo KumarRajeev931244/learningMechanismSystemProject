@@ -7,7 +7,8 @@ const paymentSchema = new mongoose.Schema({
     },
     razorpay_subscription_id:{
         type:String,
-        required: true
+        required: true,
+    
     },
     razorpay_signature:{
         type:String,
@@ -15,6 +16,6 @@ const paymentSchema = new mongoose.Schema({
     }
 },{timestamps: true})
 
-const Payment = mongoose.model("Payment", paymentSchema)
+const Payment = new mongoose.model("Payment", paymentSchema)
 
 export default Payment
