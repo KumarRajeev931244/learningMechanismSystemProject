@@ -14,19 +14,20 @@ const getRazorpayApiKey = async(req, res, next) => {
 const buySubscription = async(req, res, next) => {
       try {
         const { id } = req.user;
-        const user = await Payment.findById(id);
+        // check user exist or not
+        const user = await User.findById(id);
         if (!user) {
           return next(new AppError("unauthorised user, please login"));
         }
-        console.log("user>",user);
+        console.log("user:",user);
         if (user.role === "ADMIN") {
           return next(new AppError("admin cannot purchased course", 400));
         }
-        if (user.subscription && user.subscription.status === "active") {
-          return next(
-            new AppError("you already have an active subscription", 400)
-          );
-        }
+        // if (user.subscription && (user.subscription.status === "created" || user.subscription.status === "active")) {
+        //   return next(
+        //     new AppError("you already have an active subscription", 400)
+        //   );
+        // }
         const options = {
             plan_id: process.env.RAZORPAY_PLAN_ID,
             customer_notify: 1,
@@ -60,17 +61,22 @@ const buySubscription = async(req, res, next) => {
       }
   }
 
+// this function is used to verify the subscription of the user
+// it will check the payment signature and update the subscription status in the user model
 const verifySubscription = async(req, res, next) => {
     try {
         const {id} = req.user
         const {razorpay_payment_id, razorpay_signature, razorpay_subscription_id} = req.body
+        if(!razorpay_payment_id || !razorpay_signature || !razorpay_subscription_id){
+            return next(new AppError('invalid request, please try again', 400));
+        }
         const user = await User.findById(id)
         if(!user){
             return next(new AppError('unauthorised user, please login '))
         }
         const subscriptionId = user.subscription.id;
         const generatedSignature = crypto
-            .createHash('sha256', process.env.RAZORPAY_SECRET_ID)
+            .createHmac('sha256', process.env.RAZORPAY_SECRET_ID)
             .update(`${razorpay_payment_id} | ${subscriptionId}`)
             .digest('hex')
         if(generatedSignature !== razorpay_signature){
@@ -95,6 +101,8 @@ const verifySubscription = async(req, res, next) => {
     }
 }
 
+// this function is used to cancel the subscription of the user
+// it will update the subscription status to cancelled in the user model
 const cancelSubscription = async(req, res, next) => {
     try {
         const {id} = req.user;
@@ -121,6 +129,8 @@ const cancelSubscription = async(req, res, next) => {
     }
 }
 
+// this function is used to get all the payments made by the user
+// it will return the subscription details of the user
 const getAllPayment = async(req, res, next) => {
     try {
         const {count} = req.query;
