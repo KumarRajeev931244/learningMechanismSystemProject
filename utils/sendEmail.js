@@ -14,7 +14,7 @@ export const sendEmail = async({email, subject, message}) => {
             });
           const mailOptions = {
             from: "rajeevkumar25112002@gmail.com",
-            to: email,
+            to: {email},
             subject: subject || 'reset password',
             text: message || 'click here to reset your password', 
             html: "<b>Hello world?</b>", // HTML body
