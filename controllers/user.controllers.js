@@ -255,7 +255,7 @@ const updateUser = async(req, res, next) => {
         if(!user){
             return next(new AppError("user does not exist", 400))
         }
-        if(req.fullname){
+        if(fullname){
             user.fullname = fullname;
         }
         console.log("request file:", req.file);
