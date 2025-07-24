@@ -2,6 +2,9 @@ import User from '../models/user.models.js';
 import AppError from '../utils/error.util.js';
 import {razorpay} from '../server.js'
 import Payment from '../models/payment.model.js';
+import crypto from 'crypto'
+
+
 
 const getRazorpayApiKey = async(req, res, next) => {
     res.status(200).json({
@@ -23,11 +26,11 @@ const buySubscription = async(req, res, next) => {
         if (user.role === "ADMIN") {
           return next(new AppError("admin cannot purchased course", 400));
         }
-        // if (user.subscription && (user.subscription.status === "created" || user.subscription.status === "active")) {
-        //   return next(
-        //     new AppError("you already have an active subscription", 400)
-        //   );
-        // }
+        if (user?.subscription &&  user?.subscription?.status === "active") {
+          return next(
+            new AppError("you already have an active subscription", 400)
+          );
+        }
         const options = {
             plan_id: process.env.RAZORPAY_PLAN_ID,
             customer_notify: 1,
@@ -77,7 +80,7 @@ const verifySubscription = async(req, res, next) => {
         const subscriptionId = user.subscription.id;
         const generatedSignature = crypto
             .createHmac('sha256', process.env.RAZORPAY_SECRET_ID)
-            .update(`${razorpay_payment_id} | ${subscriptionId}`)
+            .update(`${razorpay_payment_id}|${subscriptionId}`)
             .digest('hex')
         if(generatedSignature !== razorpay_signature){
             return next(new AppError('payment not verified , please try again '))
@@ -137,6 +140,7 @@ const getAllPayment = async(req, res, next) => {
         const subscription = await razorpay.subscriptions.all({
             count: count || 10
         })
+        console.log("subscription:",subscription);
         res.status(200).json({
                 success: true,
                 message: "all payments",
