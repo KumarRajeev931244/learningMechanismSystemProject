@@ -1,6 +1,5 @@
 import path from 'path';
 import multer from 'multer';
-import { text } from 'stream/consumers';
 
 const upload = multer({
     dest: "uploads/",
@@ -20,7 +19,7 @@ const upload = multer({
         ext !== '.png' &&
         ext !== '.mp4'
     ){
-        cb(new Error(`unspported file type! ${text}`), false)
+        cb(new Error(`unspported file type! ${ext}`), false)
         return;
     }
     cb(null, true)

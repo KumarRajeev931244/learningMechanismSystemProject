@@ -3,44 +3,50 @@ import fs from 'fs/promises';
 import cloudinary from 'cloudinary';
 import AppError from '../utils/error.util.js';
 import asyncHandler from '../middlewares/asyncHandler.middleware.js';
+import { error } from 'console';
 
 // we are extracting the whole lectures
 const getAllCourses = async(req, res) => {
     try {
-        const allCourses = await Course.find({}).select('-lecture')
+        const allCourses = await Course.find({}).select('-lectures')
+        console.log("allCourses:",allCourses);
         if(!allCourses || allCourses.length === 0){
             return next(new AppError("no courses found"));
         }
 
         res.status(200).json({
             success: true,
-            message: "course lecture fetched successfully",
+            message: "course fetched successfully",
             courses: allCourses
         })
     } catch (error) {
         console.error("course error:",error);
-        return next(new AppError(error || "unable to fetch all coure details"));
+        return next(new AppError(error.message || "unable to fetch all coure details"));
     }
 }
 
 
 const getLecturesByCourseId = async function(req, res, next) {
     try {
-       const {id} = req.param;
+       console.log(req);
+       const {id} = req.params;
+       console.log("id:",id);
        const course = await Course.findById(id);
        if(!course){
-         return next(new AppError(error || "invalid course id"));
-       }
+        return next(new AppError("Invalid course ID or course not found"));
+}
+       console.log("course.lecture:",course.lectures);
        res.status(200).json({
             success: true,
-            message: "course lecture fetched successfully",
-            lectures: course.lectures
+            message: "Course lectures fetched successfully",
+            lectures: course.lectures 
+            
         })
 
         
     } catch (error) {
         console.error("course error:",error);
-        return next(new AppError(error || "unable to fetch course lecture"));
+        return next(new AppError(error.message || "unable to fetch course lecture"));
     }
 
     
@@ -151,7 +157,7 @@ const removeCourse = async (req, res, next) => {
 
 const addLectureToCourseById = async(req, res, next) => {
   try {
-    console.log("req.body:", req.body);
+    console.log("req.body:", req.file);
     const { title, description } = req.body;
     const { id } = req.params;
     const course = await Course.findById(id);
@@ -162,9 +168,7 @@ const addLectureToCourseById = async(req, res, next) => {
     }
     // agar title ya description nahi hai to error throw karna hai
     if (!title || !description) {
-      return next(
-        new AppError(
-          error || "title and description are required to add lecture"
+      return next(new AppError(error || "title and description are required to add lecture"
         )
       );
     }
@@ -178,6 +182,7 @@ const addLectureToCourseById = async(req, res, next) => {
       if (req.file) {
         const result = await cloudinary.v2.uploader.upload(req.file.path, {
           folder: "lms",
+          resource_type: "video"
         });
         console.log("result:", result);
         if (result) {
@@ -238,12 +243,12 @@ const removeLectureFromCourse = asyncHandler(async (req, res, next) => {
   }
 
   // Delete the lecture from cloudinary
-  await cloudinary.v2.uploader.destroy(
-    course.lectures[lectureIndex].lecture.public_id,
-    {
-      resource_type: 'video',
-    }
-  );
+  // await cloudinary.v2.uploader.destroy(
+  //   console.log("public:",course.lectures[lectureIndex].lecture.public_id),
+  //   {
+  //     resource_type: 'video',
+  //   }
+  // );
 
   // Remove the lecture from the array
   course.lectures.splice(lectureIndex, 1);

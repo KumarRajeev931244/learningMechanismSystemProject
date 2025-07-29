@@ -3,6 +3,7 @@ import AppError from '../utils/error.util.js';
 import {razorpay} from '../server.js'
 import Payment from '../models/payment.model.js';
 import crypto from 'crypto'
+import asyncHandler from '../middlewares/asyncHandler.middleware.js';
 
 
 
@@ -134,24 +135,115 @@ const cancelSubscription = async(req, res, next) => {
 
 // this function is used to get all the payments made by the user
 // it will return the subscription details of the user
-const getAllPayment = async(req, res, next) => {
-    try {
-        const {count} = req.query;
-        const subscription = await razorpay.subscriptions.all({
-            count: count || 10
-        })
-        console.log("subscription:",subscription);
-        res.status(200).json({
-                success: true,
-                message: "all payments",
-                subscription
-        })
-    } catch (error) {
-        console.error("failed to get all payment>",error)
-        return next(new AppError('failed to get all payment>',500))
-    }
+// const getAllPayment = async(req, res, next) => {
+//     try {
+//         const {count} = req.query;
+//         const subscription = await razorpay.subscriptions.all({
+//             count: count || 10
+//         })
+//         // console.log("subscription:",subscription);
+//         // const monthlySummary = {};        
+//         // subscription.items.forEach(item => {
+//         //     const date = new Date(item.created_at * 1000); // convert from seconds
+//         //     console.log("date:",date);
+//         //     const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
+//         //     console.log("month:",monthKey);
+
+//         //     if (!monthlySummary[monthKey]) {
+//         //       monthlySummary[monthKey] = 0;
+//         //     }
+
+//         //     monthlySummary[monthKey] += item.plan; // Convert paise to INR
+//         //   });
+        
+//         // console.log("monthlySaleRecord:",monthlySummary);
+//         res.status(200).json({
+//                 success: true,
+//                 message: "all payments",
+//                 subscription,
+//                 // monthlySalesRecord: monthlySummary
+
+//         })
+//     } catch (error) {
+//         console.error("failed to get all payment>",error)
+//         return next(new AppError('failed to get all payment>',500))
+//     }
     
-}
+// }
+
+  const getAllPayment = asyncHandler(async (req, res, _next) => {
+  const {count} = req.query;
+  
+  // Find all subscriptions from razorpay
+  const allPayment = await razorpay.subscriptions.all({
+    count: count ? count : 10
+  });
+
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  const finalMonths = {
+    January: 0,
+    February: 0,
+    March: 0,
+    April: 0,
+    May: 0,
+    June: 0,
+    July: 0,
+    August: 0,
+    September: 0,
+    October: 0,
+    November: 0,
+    December: 0,
+  };
+
+  const monthlyWisePayments = allPayment.items.map((payment) => {
+    // We are using payment.start_at which is in unix time, so we are converting it to Human readable format using Date()
+    const monthsInNumbers = new Date(payment.start_at * 1000);
+    
+    return monthNames[monthsInNumbers.getMonth()];
+  });
+
+  monthlyWisePayments.map((month) => {
+    Object.keys(finalMonths).forEach((objMonth) => {
+      if (month === objMonth) {
+        finalMonths[month] += 1;
+      }
+    });
+  });
+
+  const monthlySalesRecord = [];
+
+  Object.keys(finalMonths).forEach((monthName) => {
+    monthlySalesRecord.push(finalMonths[monthName]);
+  });
+  let totalpayment = 0;
+  allPayment.items.forEach((elemet) => {
+    if(elemet.status === "active"){
+      totalpayment++
+    }
+  })
+  console.log("total count:",totalpayment);
+  res.status(200).json({
+    success: true,
+    message: 'All payments',
+    allPayment,
+    finalMonths,
+    monthlySalesRecord,
+  });
+});
 
 export{
     getAllPayment,
